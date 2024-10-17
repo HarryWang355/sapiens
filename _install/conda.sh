@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Define the base conda path and environment name
-CONDA_BASE="/home/${USER}/anaconda3"
+CONDA_BASE="/data1/users/yuanhao/.conda"
 ENV_NAME="sapiens"
 PYTHON_VERSION="3.10"
 PYTORCH_VERSION="pytorch-cuda=12.1"
 
 # Update with the path to your local conda directory
-source "${CONDA_BASE}/etc/profile.d/conda.sh"
+# source "${CONDA_BASE}/etc/profile.d/conda.sh"
 
 # Function to check if conda environment exists
 conda_env_exists() {
@@ -20,23 +20,23 @@ print_green() {
 }
 
 # Remove the environment if it exists
-if conda_env_exists "${ENV_NAME}"; then
-  print_green "Environment '${ENV_NAME}' exists. Removing..."
-  conda env remove -n "${ENV_NAME}"
-fi
+# if conda_env_exists "${ENV_NAME}"; then
+#   print_green "Environment '${ENV_NAME}' exists. Removing..."
+#   conda env remove -n "${ENV_NAME}"
+# fi
 
 # Create the new environment and activate it
-print_green "Creating environment '${ENV_NAME}'..."
-conda create -n "${ENV_NAME}" python="${PYTHON_VERSION}" -y
-conda activate "${ENV_NAME}"
+# print_green "Creating environment '${ENV_NAME}'..."
+# conda create -n "${ENV_NAME}" python="${PYTHON_VERSION}" -y
+# conda activate "${ENV_NAME}"
 
 # Ensure pip is available
 print_green "Installing pip..."
 conda install pip -y
 
 # Install fish terminal
-print_green "Installing fish terminal..."
-conda install -c conda-forge fish -y
+# print_green "Installing fish terminal..."
+# conda install -c conda-forge fish -y
 
 # Install PyTorch, torchvision, torchaudio, and specific CUDA version
 print_green "Installing PyTorch, torchvision, torchaudio, and CUDA..."

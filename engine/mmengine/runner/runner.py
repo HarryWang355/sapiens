@@ -1756,6 +1756,28 @@ class Runner:
         self.logger.info(f'\033[96mCompleted load or resume!\033[0m')
         # print(f'\033[96m{server_name}, rank:{self._rank}, Completed load or resume!\033[0m')
 
+        # yuanhao's edit
+        # Change the input channel of the first layer of the model
+        new_projection_layer = torch.nn.Conv2d(4, 1024, kernel_size=(16, 16), stride=(16, 16))
+        new_projection_layer.requires_grad_(False)
+        # print out all fields of the model
+        # for name, param in self.model.named_parameters():
+        #     print(name)
+
+        # break from distributed wrapper
+        if is_model_wrapper(self.model):
+            self.model = self.model.module
+
+        self.model.backbone.patch_embed.projection.requires_grad_(False)
+        torch.nn.init.zeros_(new_projection_layer.weight)
+        new_projection_layer.weight[:,:3,:,:].copy_(self.model.backbone.patch_embed.projection.weight)
+        new_projection_layer.bias.copy_(self.model.backbone.patch_embed.projection.bias)
+        self.model.backbone.patch_embed.projection = new_projection_layer.cuda()
+        self.model.backbone.patch_embed.projection.requires_grad_(True)
+
+        # warp the model back to distributed wrapper
+        self.model = self.wrap_model(self.cfg.get('model_wrapper_cfg'), self.model)
+
         # Initiate inner count of `optim_wrapper`.
         self.optim_wrapper.initialize_count_status(
             self.model,

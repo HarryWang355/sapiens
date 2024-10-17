@@ -14,3 +14,6 @@ __pycache__/
 *.DS_Store
 *._*
 *.egg
+
+sapiens_host/
+seg/Outputs

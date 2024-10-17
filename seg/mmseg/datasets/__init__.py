@@ -30,6 +30,7 @@ from .albedo import AlbedoDataset
 from .hdri import HDRIDataset
 from .normal_general import NormalGeneralDataset
 from .depth_general import DepthGeneralDataset
+from .depth_garment import DepthGarmentDataset  # yuanhao's edit
 from .albedo_render_people import AlbedoRenderPeopleDataset
 from .pointmap_render_people import PointmapRenderPeopleDataset
 from .pointmap_dataset_wrappers import PointmapCombinedDataset
@@ -58,7 +59,8 @@ from .transforms import (CLAHE, AdjustGamma, Albu, BioMedical3DPad,
                          SegRescale)
 
 from .transforms.depth_transforms import RandomDepthResizeCompensate, DepthRandomFlip, \
-                    RandomDepthCrop, DepthResize, DepthRandomRotate, GenerateDepthTarget, GenerateMetricDepthTarget, PackDepthInputs
+                    RandomDepthCrop, DepthResize, DepthRandomRotate, GenerateDepthTarget, GenerateMetricDepthTarget, PackDepthInputs, \
+                    GenerateConditionalDepthTarget, PackConditonalDepthInputs
 
 from .transforms.normal_transforms import RandomNormalResizeCompensate, NormalRandomFlip, \
                     RandomNormalCrop, NormalResize, GenerateNormalTarget, PackNormalInputs

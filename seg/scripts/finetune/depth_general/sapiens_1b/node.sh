@@ -2,8 +2,8 @@ cd ../../../..
 
 ###--------------------------------------------------------------
 ## set gpu ids to use.
-# DEVICES=0,
-DEVICES=0,1,2,3,4,5,6,7,
+DEVICES=0,
+# DEVICES=0,1,2,3
 
 RUN_FILE='./tools/dist_train.sh'
 PORT=$(( ((RANDOM<<15)|RANDOM) % 63001 + 2000 ))
@@ -19,7 +19,7 @@ TRAIN_BATCH_SIZE_PER_GPU=2
 ## resume_from: to resume a checkpoint from. Starts from the last epoch.
 ## load_from: to load a checkpoint from. not resume. Starts from epoch 0, just loads the weights.
 RESUME_FROM=''
-LOAD_FROM=''
+LOAD_FROM='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-depth-0.3b/sapiens_0.3b_render_people_epoch_100.pth'
 
 ##-------------------train mode-----------------------------------
 ## debug mode is 1 gpu and allows to insert ipdb.set_trace. Turns off parallel dataloaders.
@@ -62,7 +62,7 @@ elif [ "$mode" = "multi-gpu" ]; then
     LOG_FILE="$(echo "${OUTPUT_DIR}/log.txt")"
     mkdir -p ${OUTPUT_DIR}; touch ${LOG_FILE}
 
-    CUDA_VISIBLE_DEVICES=${DEVICES} PORT=${PORT} ${RUN_FILE} ${CONFIG_FILE} \
+    CUDA_VISIBLE_DEVICES=${DEVICES} TORCH_DISTRIBUTED_DEBUG="DETAIL" PORT=${PORT} ${RUN_FILE} ${CONFIG_FILE} \
             ${NUM_GPUS} \
             --work-dir ${OUTPUT_DIR} \
             --cfg-options ${OPTIONS} \

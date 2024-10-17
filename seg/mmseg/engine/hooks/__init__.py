@@ -6,11 +6,12 @@
 
 from .visualization_hook import SegVisualizationHook
 from .general_seg_visualization_hook import GeneralSegVisualizationHook
-from .depth_visualization_hook import DepthVisualizationHook
+from .depth_visualization_hook import DepthVisualizationHook, GarmentDepthVisualizationHook
 from .normal_visualization_hook import NormalVisualizationHook
 from .general_visualization_hook import GeneralVisualizationHook
 
 __all__ = ['SegVisualizationHook', 'GeneralSegVisualizationHook', 'DepthVisualizationHook', \
             'NormalVisualizationHook', 
             'GeneralVisualizationHook', 
+            'GarmentDepthVisualizationHook'
             ]

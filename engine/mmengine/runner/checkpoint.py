@@ -95,9 +95,15 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
             module = module.module
         local_metadata = {} if metadata is None else metadata.get(
             prefix[:-1], {})
-        module._load_from_state_dict(local_state_dict, prefix, local_metadata,
-                                     True, missing_keys, unexpected_keys,
-                                     err_msg)
+        
+        # yuanhao's edit
+        if prefix == 'backbone.':
+            print('Skipping loading')
+        else:
+            module._load_from_state_dict(local_state_dict, prefix, local_metadata,
+                                        True, missing_keys, unexpected_keys,
+                                        err_msg)
+                                        
         for name, child in module._modules.items():
             if child is not None:
                 child_prefix = prefix + name + '.'

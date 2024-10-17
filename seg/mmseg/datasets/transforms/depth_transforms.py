@@ -9,6 +9,8 @@ import inspect
 import warnings
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import torch
+
 import os
 import random
 import cv2
@@ -102,6 +104,28 @@ class RandomDepthResizeCompensate(BaseTransform):
 
             results['gt_depth'] = gt_depth_resized
             assert results['gt_depth'].shape[0] == results['img'].shape[0] and results['gt_depth'].shape[1] == results['img'].shape[1]
+        
+        if 'depth_cond' in results.keys():
+            depth_cond = results['depth_cond']
+
+            ## keep_ratio is true from RandomResize in the config
+            if keep_ratio:
+                depth_cond_resized, scale_factor = mmcv.imrescale(
+                    depth_cond,
+                    results['scale'],
+                    interpolation='nearest',
+                    return_scale=True,
+                    backend='cv2')
+            else:
+                depth_cond_resized, w_scale, h_scale = mmcv.imresize(
+                    depth_cond,
+                    results['scale'],
+                    interpolation='nearest',
+                    return_scale=True,
+                    backend='cv2')
+
+            results['depth_cond'] = depth_cond_resized
+            assert results['depth_cond'].shape[0] == results['img'].shape[0] and results['depth_cond'].shape[1] == results['img'].shape[1]
 
         return results
 
@@ -194,7 +218,7 @@ class RandomDepthCrop(BaseTransform):
         img = self.crop(img, crop_bbox)
 
         # crop depth and crop mask and crop normal
-        for key in ['gt_depth', 'mask']:
+        for key in ['gt_depth', 'mask', 'depth_cond']:
 
             if key not in results.keys():
                 continue
@@ -237,6 +261,13 @@ class DepthResize(BaseTransform):
         if 'gt_depth' in results.keys():
             results['gt_depth'] = cv2.resize(
                                         results['gt_depth'],
+                                        (target_width, target_height),
+                                        interpolation=cv2.INTER_NEAREST
+                                    )
+        
+        if 'depth_cond' in results.keys():
+            results['depth_cond'] = cv2.resize(
+                                        results['depth_cond'],
                                         (target_width, target_height),
                                         interpolation=cv2.INTER_NEAREST
                                     )
@@ -309,6 +340,15 @@ class DepthRandomRotate(BaseTransform):
                     center=self.center,
                     auto_bound=self.auto_bound,
                     interpolation='nearest')
+            
+            if 'depth_cond' in results.keys():
+                results['depth_cond'] = mmcv.imrotate(
+                    results['depth_cond'],
+                    angle=degree,
+                    border_value=self.depth_pad_val,
+                    center=self.center,
+                    auto_bound=self.auto_bound,
+                    interpolation='nearest')
 
         return results
 
@@ -343,6 +383,10 @@ class DepthRandomFlip(MMCV_RandomFlip):
         if 'gt_depth' in results.keys():
             results['gt_depth'] = mmcv.imflip(results['gt_depth'], direction=results['flip_direction'])
 
+        # yuanhao's edit
+        if 'depth_cond' in results.keys():
+            results['depth_cond'] = mmcv.imflip(results['depth_cond'], direction=results['flip_direction'])
+
 
 @TRANSFORMS.register_module()
 class GenerateDepthTarget(BaseTransform):
@@ -365,6 +409,40 @@ class GenerateDepthTarget(BaseTransform):
 
         gt_depth[mask == 0] = -1 ## set the background to -1
         results['gt_depth_map'] = gt_depth
+
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+
+@TRANSFORMS.register_module()
+class GenerateConditionalDepthTarget(BaseTransform):
+    def __init__(self):
+        return
+
+    def transform(self, results: dict) -> dict:
+        gt_depth = results['gt_depth']
+        mask = results['mask']
+        depth_cond = results['depth_cond']
+        mask_cond = (depth_cond > 0) & (depth_cond < 10) 
+
+        foreground_depth = gt_depth[mask > 0]
+
+        ## normalize the foreground depth
+        if foreground_depth.size > 0:
+            min_depth, max_depth = foreground_depth.min(), foreground_depth.max()
+
+            ## normalize foreground depth 0 to 1
+            if max_depth - min_depth > 0:
+                gt_depth = (gt_depth - min_depth) / (max_depth - min_depth)
+                depth_cond = (depth_cond - min_depth) / (max_depth - min_depth)
+
+
+        gt_depth[mask == 0] = -1 ## set the background to -1
+        depth_cond[~mask_cond] = -1 ## set the background to -1
+        results['gt_depth_map'] = gt_depth
+        results['depth_cond_map'] = depth_cond
 
         return results
 
@@ -411,6 +489,57 @@ class PackDepthInputs(BaseTransform):
                 img = img.transpose(2, 0, 1)
                 img = to_tensor(img).contiguous()
             packed_results['inputs'] = img
+
+        data_sample = SegDataSample()
+
+        if 'gt_depth_map' in results:
+            gt_depth_data = dict(
+                data=to_tensor(results['gt_depth_map'][None, ...].copy()))
+            data_sample.set_data(dict(gt_depth_map=PixelData(**gt_depth_data)))
+
+        img_meta = {}
+        for key in self.meta_keys:
+            if key in results:
+                img_meta[key] = results[key]
+        data_sample.set_metainfo(img_meta)
+        packed_results['data_samples'] = data_sample
+
+        return packed_results
+
+    def __repr__(self) -> str:
+        repr_str = self.__class__.__name__
+        repr_str += f'(meta_keys={self.meta_keys})'
+        return repr_str
+
+
+@TRANSFORMS.register_module()
+class PackConditonalDepthInputs(BaseTransform):
+
+    def __init__(self,
+                 meta_keys=('img_path', 'ori_shape',
+                            'img_shape', 'pad_shape', 'scale_factor', 'flip',
+                            'flip_direction',)):
+        self.meta_keys = meta_keys
+
+    def transform(self, results: dict) -> dict:
+        packed_results = dict()
+        if 'img' in results and 'depth_cond_map' in results:
+            img = results['img']
+            depth_cond = results['depth_cond_map']
+            if len(img.shape) < 3:
+                img = np.expand_dims(img, -1)
+            if not img.flags.c_contiguous:
+                img = to_tensor(np.ascontiguousarray(img.transpose(2, 0, 1)))
+            else:
+                img = img.transpose(2, 0, 1)
+                img = to_tensor(img).contiguous()
+            
+            depth_cond = np.expand_dims(depth_cond, 0)
+            depth_cond = to_tensor(depth_cond).contiguous()
+
+            inputs = torch.cat([img, depth_cond], dim=0)
+
+            packed_results['inputs'] = inputs
 
         data_sample = SegDataSample()
 

@@ -9,24 +9,28 @@ _base_ = [
 ]
 
 ##-----------------------------------------------------------------
-# model_name = 'sapiens_0.3b'; embed_dim=1024; num_layers=24
+model_name = 'sapiens_0.3b'; embed_dim=1024; num_layers=24
 # model_name = 'sapiens_0.6b'; embed_dim=1280; num_layers=32
-model_name = 'sapiens_1b'; embed_dim=1536; num_layers=40
+# model_name = 'sapiens_1b'; embed_dim=1536; num_layers=40
 # model_name = 'sapiens_2b'; embed_dim=1920; num_layers=48
 
 ##-----------------------------------------------------------------
-image_size = (768, 1024) ## width x height
+# image_size = (768, 1024) ## width x height
+image_size = (512, 512) ## width x height
 data_preprocessor = dict(size=image_size)
 
 patch_size=16
 num_epochs=200
 
-pretrained_checkpoint='../pretrain/checkpoints/sapiens_1b/sapiens_1b_epoch_173_clean.pth'
+# pretrained_checkpoint='../pretrain/checkpoints/sapiens_1b/sapiens_1b_epoch_173_clean.pth'
+# pretrained_checkpoint='/data1/users/yuanhao/sapiens/sapiens-depth-0.6b/sapiens_0.6b_render_people_epoch_70.pth'
+pretrained_checkpoint='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-pretrain-0.3b/sapiens_0.3b_epoch_1600_clean.pth'
 
 ## dataset root path
 dataset_train = dict(
-        type='DepthGeneralDataset',
-        data_root='/home/sapiens_toy_dataset',
+        # type='DepthGeneralDataset',
+        type='DepthGarmentDataset',
+        data_root='/data1/datasets/garment-data/iter3-ele0/sapiens-depth-4views',
         serialize_data=False,
         )
 
@@ -36,13 +40,14 @@ train_datasets = [dataset_train]
 vis_every_iters=100
 # vis_every_iters=1
 
-evaluate_every_n_epochs = 1
+evaluate_every_n_epochs = 10
 
 ##--------------------------------------------------------------------------
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 data_preprocessor = dict(
-    type='SegDataPreProcessor',
+    # type='SegDataPreProcessor',
+    type='GarmentDataPreProcessor',
     mean=[123.675, 116.28, 103.53],
     std=[58.395, 57.12, 57.375],
     bgr_to_rgb=True, ## convert from bgr to rgb for pretrained models
@@ -78,7 +83,8 @@ model = dict(
         num_classes=1,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(type='SiLogLoss', loss_weight=1.0)),
+        # loss_decode=dict(type='SiLogLoss', loss_weight=1.0)),
+        loss_decode=dict(type='MetricDepthL1Loss', loss_weight=1.0)),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
@@ -137,33 +143,64 @@ default_hooks = dict(
     logger=dict(type='LoggerHook', interval=10),
     param_scheduler=dict(type='ParamSchedulerHook'),
     sampler_seed=dict(type='DistSamplerSeedHook'),
-    checkpoint=dict(type='CheckpointHook', by_epoch=True, interval=1, max_keep_ckpts=-1),
+    checkpoint=dict(type='CheckpointHook', by_epoch=True, interval=10, max_keep_ckpts=1),
     # checkpoint=dict(type='CheckpointHook', by_epoch=False, interval=1000, max_keep_ckpts=-1), ## to save every 1000 iters
-    visualization=dict(type='DepthVisualizationHook', interval=vis_every_iters, max_samples=4, vis_image_width=384, vis_image_height=512),
+    # visualization=dict(type='DepthVisualizationHook', interval=vis_every_iters, max_samples=4, vis_image_width=384, vis_image_height=512),
+    visualization=dict(type='GarmentDepthVisualizationHook', interval=vis_every_iters, max_samples=4, vis_image_width=512, vis_image_height=512),
     )
 
 ##-----------------------------------------------------------------
 # dataset settings
+# train_pipeline = [
+#     dict(type='LoadImage'),
+#     dict(
+#         type='RandomResize',
+#         scale=(768, 1024), ## width, height
+#         ratio_range=(0.2, 2.0),
+#         keep_ratio=True),
+#     dict(type='RandomDepthResizeCompensate'), ## compensate for the random resize augmentation
+#     dict(type='RandomDepthCrop', crop_size=(1024, 768)), ## height, width
+#     dict(type='DepthResize', scale=(768, 1024)), ## in case if image was too small and random crop returned the original image
+#     dict(type='DepthRandomRotate', prob=0.5, degree=60, depth_pad_val=1e10),
+#     dict(type='DepthRandomFlip', prob=0.5,),
+#     dict(type='GenerateDepthTarget'),
+#     dict(type='PhotoMetricDistortion'),
+#     dict(type='PackDepthInputs')
+# ]
+
+# test_pipeline = [
+#     dict(type='LoadImage'),
+#     dict(type='Resize', scale=(768, 1024), keep_ratio=False), ## this is width x height, 768 x 1024
+#     # add loading annotation after ``Resize`` because ground truth
+#     # does not need to do resize data transform
+#     dict(type='LoadAnnotations'),
+#     dict(type='PackDepthInputs')
+# ]
+
+# try 512 x 512
 train_pipeline = [
     dict(type='LoadImage'),
     dict(
         type='RandomResize',
-        scale=(768, 1024), ## width, height
-        ratio_range=(0.2, 2.0),
+        scale=(512, 512), ## width, height
+        # ratio_range=(0.2, 2.0),
+        ratio_range=(1.0, 2.0),
         keep_ratio=True),
     dict(type='RandomDepthResizeCompensate'), ## compensate for the random resize augmentation
-    dict(type='RandomDepthCrop', crop_size=(1024, 768)), ## height, width
-    dict(type='DepthResize', scale=(768, 1024)), ## in case if image was too small and random crop returned the original image
-    dict(type='DepthRandomRotate', prob=0.5, degree=60, depth_pad_val=1e10),
+    dict(type='RandomDepthCrop', crop_size=(512, 512)), ## height, width
+    dict(type='DepthResize', scale=(512, 512)), ## in case if image was too small and random crop returned the original image
+    # dict(type='DepthRandomRotate', prob=0.5, degree=60, depth_pad_val=1e10),
     dict(type='DepthRandomFlip', prob=0.5,),
-    dict(type='GenerateDepthTarget'),
+    # dict(type='GenerateDepthTarget'),
+    dict(type='GenerateConditionalDepthTarget'),
     dict(type='PhotoMetricDistortion'),
-    dict(type='PackDepthInputs')
+    # dict(type='PackDepthInputs')
+    dict(type='PackConditonalDepthInputs')
 ]
 
 test_pipeline = [
     dict(type='LoadImage'),
-    dict(type='Resize', scale=(768, 1024), keep_ratio=False), ## this is width x height, 768 x 1024
+    dict(type='Resize', scale=(512, 512), keep_ratio=False), ## this is width x height, 768 x 1024
     # add loading annotation after ``Resize`` because ground truth
     # does not need to do resize data transform
     dict(type='LoadAnnotations'),
