@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 @MODELS.register_module()
 class MetricDepthL1Loss(nn.Module):
-    def __init__(self, reduction='mean', loss_weight=1.0, eps=-100, loss_name='loss_l1'):
+    def __init__(self, reduction='mean', loss_weight=1.0, eps=-1, loss_name='loss_l1'):
         super().__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight

@@ -2,7 +2,7 @@ cd ../../../..
 
 ###--------------------------------------------------------------
 ## set gpu ids to use.
-DEVICES=0,
+DEVICES=4,5,6,7,
 # DEVICES=0,1,2,3
 
 RUN_FILE='./tools/dist_train.sh'
@@ -14,12 +14,13 @@ DATASET='depth_general'
 MODEL="sapiens_1b_${DATASET}-1024x768"
 
 JOB_NAME="$MODEL"
-TRAIN_BATCH_SIZE_PER_GPU=2
+TRAIN_BATCH_SIZE_PER_GPU=6
 
 ## resume_from: to resume a checkpoint from. Starts from the last epoch.
 ## load_from: to load a checkpoint from. not resume. Starts from epoch 0, just loads the weights.
 RESUME_FROM=''
-LOAD_FROM='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-depth-0.3b/sapiens_0.3b_render_people_epoch_100.pth'
+# LOAD_FROM='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-depth-0.3b/sapiens_0.3b_render_people_epoch_100.pth'
+LOAD_FROM='/data1/users/yuanhao/sapiens/seg/Outputs/train/depth_general/sapiens_1b_depth_general-1024x768/node/10-18-2024_01:36:51/epoch_100.pth'
 
 ##-------------------train mode-----------------------------------
 ## debug mode is 1 gpu and allows to insert ipdb.set_trace. Turns off parallel dataloaders.

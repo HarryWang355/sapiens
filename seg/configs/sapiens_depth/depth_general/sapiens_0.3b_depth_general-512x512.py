@@ -20,24 +20,25 @@ image_size = (512, 512) ## width x height
 data_preprocessor = dict(size=image_size)
 
 patch_size=16
-num_epochs=200
+num_epochs=100
 
 # pretrained_checkpoint='../pretrain/checkpoints/sapiens_1b/sapiens_1b_epoch_173_clean.pth'
 # pretrained_checkpoint='/data1/users/yuanhao/sapiens/sapiens-depth-0.6b/sapiens_0.6b_render_people_epoch_70.pth'
 pretrained_checkpoint='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-pretrain-0.3b/sapiens_0.3b_epoch_1600_clean.pth'
+# pretrained_checkpoint='/data1/users/yuanhao/sapiens/seg/Outputs/train/depth_general/sapiens_1b_depth_general-1024x768/node/10-18-2024_01:36:51/epoch_100.pth'
 
 ## dataset root path
 dataset_train = dict(
         # type='DepthGeneralDataset',
         type='DepthGarmentDataset',
-        data_root='/data1/datasets/garment-data/iter3-ele0/sapiens-depth-4views',
+        data_root='/data1/datasets/garment-data/iter3-ele0/sapiens-depth-10views',
         serialize_data=False,
         )
 
 ##------------------------------------------------------------------------
 train_datasets = [dataset_train]
 
-vis_every_iters=100
+vis_every_iters=1000
 # vis_every_iters=1
 
 evaluate_every_n_epochs = 10
@@ -62,6 +63,7 @@ model = dict(
         type='mmpretrain.VisionTransformer',
         arch=model_name,
         img_size=(image_size[1], image_size[0]),
+        in_channels=4,
         patch_size=patch_size,
         qkv_bias=True,
         final_norm=True,
@@ -180,19 +182,21 @@ default_hooks = dict(
 # try 512 x 512
 train_pipeline = [
     dict(type='LoadImage'),
-    dict(
-        type='RandomResize',
-        scale=(512, 512), ## width, height
-        # ratio_range=(0.2, 2.0),
-        ratio_range=(1.0, 2.0),
-        keep_ratio=True),
+    # dict(
+    #     type='RandomResize',
+    #     scale=(512, 512), ## width, height
+    #     # ratio_range=(0.2, 2.0),
+    #     ratio_range=(1.5, 2.0),
+    #     keep_ratio=True),
+    dict(type='Resize', scale=(512, 512), keep_ratio=False),
     dict(type='RandomDepthResizeCompensate'), ## compensate for the random resize augmentation
     dict(type='RandomDepthCrop', crop_size=(512, 512)), ## height, width
     dict(type='DepthResize', scale=(512, 512)), ## in case if image was too small and random crop returned the original image
     # dict(type='DepthRandomRotate', prob=0.5, degree=60, depth_pad_val=1e10),
     dict(type='DepthRandomFlip', prob=0.5,),
     # dict(type='GenerateDepthTarget'),
-    dict(type='GenerateConditionalDepthTarget'),
+    # dict(type='GenerateConditionalDepthTarget'),
+    dict(type='GenerateConditionalMetricDepthTarget', max=1.50, min=0.85, no_cond_prob=0.1),
     dict(type='PhotoMetricDistortion'),
     # dict(type='PackDepthInputs')
     dict(type='PackConditonalDepthInputs')

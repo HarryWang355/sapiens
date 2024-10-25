@@ -1731,6 +1731,14 @@ class Runner:
         # initialize the model weights
         self.logger.info(f'\033[96mInitializing model weights!\033[0m')
         self._init_model_weights()
+        # new_projection_layer = torch.nn.Conv2d(4, 1024, kernel_size=(16, 16), stride=(16, 16))
+        # new_projection_layer.requires_grad_(False)
+        # self.model.backbone.patch_embed.projection.requires_grad_(False)
+        # torch.nn.init.zeros_(new_projection_layer.weight)
+        # new_projection_layer.weight[:,:3,:,:].copy_(self.model.backbone.patch_embed.projection.weight[:, :3, :, :])
+        # new_projection_layer.bias.copy_(self.model.backbone.patch_embed.projection.bias)
+        # self.model.backbone.patch_embed.projection = new_projection_layer.cuda()
+        # self.model.backbone.patch_embed.projection.requires_grad_(True)
         self.logger.info(f'\033[96mDone initializing model weights!\033[0m')
 
         # try to enable activation_checkpointing feature
@@ -1765,18 +1773,21 @@ class Runner:
         #     print(name)
 
         # break from distributed wrapper
-        if is_model_wrapper(self.model):
-            self.model = self.model.module
+        # if is_model_wrapper(self.model):
+        #     self.model = self.model.module
 
-        self.model.backbone.patch_embed.projection.requires_grad_(False)
-        torch.nn.init.zeros_(new_projection_layer.weight)
-        new_projection_layer.weight[:,:3,:,:].copy_(self.model.backbone.patch_embed.projection.weight)
-        new_projection_layer.bias.copy_(self.model.backbone.patch_embed.projection.bias)
-        self.model.backbone.patch_embed.projection = new_projection_layer.cuda()
-        self.model.backbone.patch_embed.projection.requires_grad_(True)
+        # self.model.backbone.patch_embed.projection.requires_grad_(False)
+        # torch.nn.init.zeros_(new_projection_layer.weight)
+        # new_projection_layer.weight[:,:3,:,:].copy_(self.model.backbone.patch_embed.projection.weight)
+        # new_projection_layer.bias.copy_(self.model.backbone.patch_embed.projection.bias)
+        # self.model.backbone.patch_embed.projection = new_projection_layer.cuda()
+        # self.model.backbone.patch_embed.projection.requires_grad_(True)
 
-        # warp the model back to distributed wrapper
-        self.model = self.wrap_model(self.cfg.get('model_wrapper_cfg'), self.model)
+        # # update the optimizer
+        # # self.optim_wrapper.param_groups[1]['params'][0] = self.model.backbone.patch_embed.projection.weight.detach().clone()
+
+        # # warp the model back to distributed wrapper
+        # self.model = self.wrap_model(self.cfg.get('model_wrapper_cfg'), self.model)
 
         # Initiate inner count of `optim_wrapper`.
         self.optim_wrapper.initialize_count_status(
@@ -2289,6 +2300,9 @@ class Runner:
                     checkpoint['param_schedulers'].append(state_dict)
 
         self.call_hook('before_save_checkpoint', checkpoint=checkpoint)
+        print('Yuanhao: Saving checkpoint to', filepath)
+        print(checkpoint['state_dict']['backbone.patch_embed.projection.weight'][0, 3])
+
         save_checkpoint(
             checkpoint,
             filepath,

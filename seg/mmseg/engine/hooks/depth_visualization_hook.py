@@ -200,16 +200,17 @@ class GarmentDepthVisualizationHook(Hook):
         
         processed_depth[mask] = depth_colored_foreground
 
-        if cond_depth_map is not None:
+        if cond_depth_map is not None and cond_mask is not None and np.sum(cond_mask) > 0:
             cond_depth_foreground = cond_depth_map[cond_mask > 0]
             processed_cond_depth = np.full((cond_mask.shape[0], cond_mask.shape[1], 3), background_color, dtype=np.uint8)
             cond_depth_normalized_foreground = 1 - ((cond_depth_foreground - min_val) / (max_val - min_val)) ## 1 is near camera, 0 is far camera
+            cond_depth_normalized_foreground = np.clip(cond_depth_normalized_foreground, 0, 1)
             cond_depth_normalized_foreground = (cond_depth_normalized_foreground * 255.0).astype(np.uint8)
             cond_depth_colored_foreground = cv2.applyColorMap(cond_depth_normalized_foreground, cv2.COLORMAP_INFERNO)
             cond_depth_colored_foreground = cond_depth_colored_foreground.reshape(-1, 3)
             processed_cond_depth[cond_mask] = cond_depth_colored_foreground
         else:
-            processed_cond_depth = None
+            processed_cond_depth = np.ones_like(processed_depth) * background_color
 
         return processed_depth, processed_cond_depth
 
@@ -262,34 +263,39 @@ class GarmentDepthVisualizationHook(Hook):
 
         vis_images = []
 
-        for i, (input, data_sample_with_pred, seg_logit) in enumerate(zip(inputs, data_samples_with_pred, seg_logits)):
-            image = input[:3]
-            depth_cond = input[3]
-            image = image.permute(1, 2, 0).cpu().numpy() ## rgb image
-            image = np.ascontiguousarray(image.copy())
-            depth_cond = depth_cond.cpu().numpy()
-            depth_cond_mask = depth_cond > -1
+        try:
+            for i, (input, data_sample_with_pred, seg_logit) in enumerate(zip(inputs, data_samples_with_pred, seg_logits)):
+                image = input[:3]
+                depth_cond = input[3]
+                image = image.permute(1, 2, 0).cpu().numpy() ## rgb image
+                image = np.ascontiguousarray(image.copy())
+                depth_cond = depth_cond.cpu().numpy()
+                depth_cond_mask = depth_cond > -1
 
-            gt_depth_map = data_sample_with_pred.gt_depth_map.data[0].numpy()
-            mask = gt_depth_map > 0
+                gt_depth_map = data_sample_with_pred.gt_depth_map.data[0].numpy()
+                mask = gt_depth_map > 0
 
-            vis_gt_depth_map = self.vis_depth_map(gt_depth_map, mask)[0]
+                vis_gt_depth_map = self.vis_depth_map(gt_depth_map, mask)[0]
 
-            ### resize pred to the size of image
-            pred_depth_map = cv2.resize(seg_logit, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_LINEAR)
-            vis_pred_depth_map, vis_cond_depth_map = self.vis_depth_map(pred_depth_map, mask, cond_depth_map=depth_cond, cond_mask=depth_cond_mask)
+                ### resize pred to the size of image
+                pred_depth_map = cv2.resize(seg_logit, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_LINEAR)
+                vis_pred_depth_map, vis_cond_depth_map = self.vis_depth_map(pred_depth_map, mask, cond_depth_map=depth_cond, cond_mask=depth_cond_mask)
 
-            ## get raw pred depth with background
-            raw_vis_pred_depth_map = self.vis_depth_map(pred_depth_map, mask=None)[0]
+                ## get raw pred depth with background
+                raw_vis_pred_depth_map = self.vis_depth_map(pred_depth_map, mask=None)[0]
 
-            vis_image = np.concatenate([image, vis_gt_depth_map, vis_cond_depth_map, vis_pred_depth_map, raw_vis_pred_depth_map], axis=1)
-            vis_image = cv2.resize(vis_image, (5*self.vis_image_width, self.vis_image_height), interpolation=cv2.INTER_AREA)
-            vis_images.append(vis_image)
+                vis_image = np.concatenate([image, vis_gt_depth_map, vis_cond_depth_map, vis_pred_depth_map, raw_vis_pred_depth_map], axis=1)
+                vis_image = cv2.resize(vis_image, (5*self.vis_image_width, self.vis_image_height), interpolation=cv2.INTER_AREA)
+                vis_images.append(vis_image)
 
-        grid_image = np.concatenate(vis_images, axis=0)
+            grid_image = np.concatenate(vis_images, axis=0)
 
-        # Save the grid image to a file
-        grid_out_file = '{}_{}.jpg'.format(prefix, suffix)
-        cv2.imwrite(grid_out_file, grid_image)
+            # Save the grid image to a file
+            grid_out_file = '{}_{}.jpg'.format(prefix, suffix)
+            cv2.imwrite(grid_out_file, grid_image)
+        except Exception as e:
+            print(e)
+            self.vis_depth_map(pred_depth_map, mask, cond_depth_map=depth_cond, cond_mask=depth_cond_mask)
+            print('Error in visualization')
 
         return

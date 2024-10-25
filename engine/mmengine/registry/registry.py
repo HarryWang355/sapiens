@@ -611,6 +611,9 @@ class Registry:
         if isinstance(module_name, str):
             module_name = [module_name]
         for name in module_name:
+            # Yuanhao's edit: a hacky way to avoid errors
+            if name == 'Adafactor':
+                continue
             if not force and name in self._module_dict:
                 existed_module = self.module_dict[name]
                 raise KeyError(f'{name} is already registered in {self.name} '

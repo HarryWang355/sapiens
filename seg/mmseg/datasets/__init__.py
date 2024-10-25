@@ -60,7 +60,7 @@ from .transforms import (CLAHE, AdjustGamma, Albu, BioMedical3DPad,
 
 from .transforms.depth_transforms import RandomDepthResizeCompensate, DepthRandomFlip, \
                     RandomDepthCrop, DepthResize, DepthRandomRotate, GenerateDepthTarget, GenerateMetricDepthTarget, PackDepthInputs, \
-                    GenerateConditionalDepthTarget, PackConditonalDepthInputs
+                    GenerateConditionalDepthTarget, PackConditonalDepthInputs, GenerateConditionalMetricDepthTarget
 
 from .transforms.normal_transforms import RandomNormalResizeCompensate, NormalRandomFlip, \
                     RandomNormalCrop, NormalResize, GenerateNormalTarget, PackNormalInputs

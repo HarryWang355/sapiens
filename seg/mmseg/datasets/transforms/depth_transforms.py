@@ -451,6 +451,46 @@ class GenerateConditionalDepthTarget(BaseTransform):
 
 
 @TRANSFORMS.register_module()
+class GenerateConditionalMetricDepthTarget(BaseTransform):
+    def __init__(self,
+                 max=1.50,
+                 min=0.85,
+                 no_cond_prob=0.1):
+        self.max = max
+        self.min = min
+        assert self.max > self.min
+        self.no_cond_prob = no_cond_prob
+
+    def transform(self, results: dict) -> dict:
+        gt_depth = results['gt_depth']
+        mask = results['mask']
+        depth_cond = results['depth_cond']
+        mask_cond = (depth_cond > 0) & (depth_cond < 10) 
+
+        foreground_depth = gt_depth[mask > 0]
+
+        ## normalize the foreground depth
+        if foreground_depth.size > 0:
+
+            ## normalize foreground depth 0 to 1
+            gt_depth = (gt_depth - self.min) / (self.max - self.min)
+            depth_cond = (depth_cond - self.min) / (self.max - self.min)
+
+
+        gt_depth[mask == 0] = -1 ## set the background to -1
+        depth_cond[~mask_cond] = -1 ## set the background to -1
+        if random.rand() < self.no_cond_prob:
+            depth_cond = np.ones_like(depth_cond) * -1
+        results['gt_depth_map'] = gt_depth
+        results['depth_cond_map'] = depth_cond
+
+        return results
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+
+@TRANSFORMS.register_module()
 class GenerateMetricDepthTarget(BaseTransform):
     def __init__(self, background_val=-1000):
         self.background_val = background_val
@@ -535,7 +575,7 @@ class PackConditonalDepthInputs(BaseTransform):
                 img = to_tensor(img).contiguous()
             
             depth_cond = np.expand_dims(depth_cond, 0)
-            depth_cond = to_tensor(depth_cond).contiguous()
+            depth_cond = to_tensor(depth_cond.copy()).contiguous()
 
             inputs = torch.cat([img, depth_cond], dim=0)
 
