@@ -31,7 +31,7 @@ pretrained_checkpoint='/data1/users/yuanhao/sapiens/sapiens_host/sapiens-pretrai
 dataset_train = dict(
         # type='DepthGeneralDataset',
         type='DepthGarmentDataset',
-        data_root='/data1/datasets/garment-data/iter3-ele0/sapiens-depth-10views',
+        data_root='/data1/datasets/garment-data/iter3-ele0/sapiens-depth-10views-edit',
         serialize_data=False,
         )
 

@@ -2,7 +2,7 @@ cd ../../../..
 
 ###--------------------------------------------------------------
 ## set gpu ids to use.
-DEVICES=4,5,6,7,
+DEVICES=2,3,,
 # DEVICES=0,1,2,3
 
 RUN_FILE='./tools/dist_train.sh'
@@ -11,7 +11,7 @@ PORT=$(( ((RANDOM<<15)|RANDOM) % 63001 + 2000 ))
 ##--------------------------------------------------------
 ####-----------------MODEL_CARD----------------------------
 DATASET='depth_general'
-MODEL="sapiens_1b_${DATASET}-1024x768"
+MODEL="sapiens_0.3b_${DATASET}-512x512"
 
 JOB_NAME="$MODEL"
 TRAIN_BATCH_SIZE_PER_GPU=6
